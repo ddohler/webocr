@@ -1,8 +1,11 @@
 {% extends "base.html" %}
+{% load i18n %}
 
-{% block title %}{% trans "Please log in." %}{% endblock %}
+{% block title %}{% trans "Please log in." %}{% endblock title %}
 {% block body %}
-    <form action="/login" method="post">{% csrf_token %}
+    <form action="{% url django.contrib.auth.views.login %}" method="post">{% csrf_token %}
     {{ form.as_p }}
     <input type="submit" value="Submit" />
+    <input type="hidden" name="next" value="{{ next }}" />
     </form>
+{% endblock body %}
