@@ -2,4 +2,6 @@
 {% load i18n %}
 
 {% block title %}{% trans "Home" %}{% endblock title %}
-{% block body %}<p>{{ msg }}</p>{% endblock body %}
+{% block body %}<p>{{ msg }}</p>
+<p><a href="{% url logout %}">Log out</a></p>
+{% endblock body %}
