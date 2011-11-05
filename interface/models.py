@@ -1,9 +1,10 @@
 from django.db import models
-import interface.util.upload_path
+from django.contrib.auth.models import User
+from interface.util import upload_path
 
 # A document that has been uploaded for OCRing.
 class Document(models.Model):
-    owner = models.ForeignKey(models.User)
+    owner = models.ForeignKey(User)
     doc_file = models.FileField(upload_to=upload_path,max_length=255)
 
     upload_date = models.DateTimeField(auto_now_add=True)
@@ -23,13 +24,13 @@ class Document(models.Model):
         ('jpg', 'JPEG'),
         ('png', 'PNG'),
         ('unk', 'Unknown'),
-    )
+    ))
     color_depth = models.CharField(max_length=1, choices=(
         ('g', 'Grayscale'),
         ('c', 'Color'), # For our purposes, number of bits is irrelevant
         ('b', 'Black and white'),
         ('u', 'Unknown'),
-    )
+    ))
 
     # Todo:
 # Finish models
