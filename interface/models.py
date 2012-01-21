@@ -33,9 +33,6 @@ class Document(models.Model):
     ))
 
     # Todo:
-# Finish models
-# Figure out how file uploads are handled
-# Run initial South migration
 
 class OCRJob(models.Model):
     document = models.ForeignKey(Document)
