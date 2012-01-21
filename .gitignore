@@ -2,3 +2,4 @@ settings.py
 db.sqlite
 password
 *.pyc
+drop

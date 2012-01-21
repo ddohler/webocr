@@ -4,10 +4,15 @@ from django.contrib.auth.views import login, logout
 from django.contrib import admin
 admin.autodiscover()
 
+from interface.views import main, documents
+
 urlpatterns = patterns('',
     # Example:
     # (r'^ocrweb/', include('ocrweb.foo.urls')),
-    (r'^$', 'interface.views.main.main'),
+    (r'^$', main.main),
+    (r'^documents$', documents.main),
+    #Todo It might be better to do this as a Form with GET, not sure
+    (r'^documents/getdoc/([a-f0-9-]+)/$', documents.get_doc),
     url(r'^login$', login, {'template_name': 'login.html'},name="login"),
     url(r'^logout$', logout, {'next_page': '/'}, name="logout"),
     # Uncomment the admin/doc line below to enable admin documentation:

@@ -8,14 +8,14 @@ class Document(models.Model):
     doc_file = models.FileField(upload_to=upload_path,max_length=255)
 
     upload_date = models.DateTimeField(auto_now_add=True)
-    start_ocr_date = models.DateTimeField(null=True)
-    finish_ocr_date = models.DateTimeField(null=True)
+    start_ocr_date = models.DateTimeField(null=True,blank=True)
+    finish_ocr_date = models.DateTimeField(null=True,blank=True)
 
     upload_name = models.CharField(max_length=220)
 #Todo: Make sure this gets populated upon creation
     internal_name = models.CharField(max_length=220)
     
-    num_pages = models.IntegerField()
+    num_pages = models.IntegerField(null=True,blank=True)
 
     file_format = models.CharField(max_length=3, choices=(
         ('pdf', 'Adobe PDF'),
@@ -43,9 +43,9 @@ class OCRJob(models.Model):
         ('c', 'Completed'),
     ))
 
-    conv_cost = models.IntegerField(null=True) # File format conversion cost
-    bw_cost = models.IntegerField(null=True) # B&W conversion cost
-    ocr_cost = models.IntegerField(null=True) # OCR computation cost
+    conv_cost = models.IntegerField(null=True,blank=True) # File format conversion cost
+    bw_cost = models.IntegerField(null=True,blank=True) # B&W conversion cost
+    ocr_cost = models.IntegerField(null=True,blank=True) # OCR computation cost
 
     error_text = models.CharField(max_length=255,blank=True)
 # This next field may eventually contain hOCR

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "My Documents" %}{% endblock title %}
+{% block body %}
+<table>
+	<tr>
+		<th>{% trans "Document name" %}</th>
+		<th>{% trans "Download original" %}</th>
+	</tr>
+	{% for doc in docs %}
+	<tr><td>{{doc.upload_name}}</td><td><a href="{% url interface.views.documents.get_doc doc.internal_name %}">Link</a></td></tr>
+	{% endfor %}
+</table>
+{% endblock body %}
