@@ -9,6 +9,8 @@ import uuid
 from interface.forms import DocumentForm
 from interface.models import Document
 
+from async.tasks import determine_format
+
 @login_required
 def main(request):
     if request.method == 'POST': # Standard Django form pattern
@@ -30,6 +32,8 @@ def main(request):
             d.color_depth='u'
 
             d.save()
+
+            determine_format.delay(d.pk)
 
             return HttpResponseRedirect('/')
     else:
