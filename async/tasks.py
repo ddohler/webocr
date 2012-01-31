@@ -51,22 +51,34 @@ def doc_to_png(docid):
         split_tif(doc)
         img_to_png(doc)
 
-def split_pdf(doc):
-    folder = MEDIA_ROOT + "/" + doc.internal_name + "/" + PAGES_FOLDER
-    
-    os.makedirs(folder) #Todo: Check for pre-existing directory
-    path = folder + "/"
+def split_pdf(doc, folder=None):
+    if folder == None:
+        folder = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
+        os.mkdir(folder) #Todo: Check for pre-existing directory
+
     doc.doc_file.open(mode="rb")
     iPdf = PdfFileReader(doc.doc_file)
     
     for i in range(iPdf.getNumPages()):
         oPdf = PdfFileWriter()
         oPdf.addPage(iPdf.getPage(i))
-        oPdf.write(file(''.join([path,str(i),".pdf"]),"w"))
+        oPdf.write(file(''.join([folder,str(i),".pdf"]),"w"))
 
-#Todo
-def pdf_to_png(doc):
-    pass
+#Uses ImageMagick to convert PDFs to PNG
+def pdfs_to_png(doc, pdf_loc=None):
+    if pdf_loc == None:
+       pdf_loc = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
+
+    png_loc = pdf_loc + "png/"
+    os.mkdir(png_loc) #Todo: Check for pre-existing directory
+
+    pdf_files = os.listdir(pdf_loc)
+    for s in pdf_files:
+        if s[-3:] == 'pdf':
+            cmd = 'mogrify -density 300 -format png -path '+png_loc
+            cmd += ' '+pdf_loc + s
+            print cmd
+            os.system(cmd)
 
 #Todo
 def split_tif(doc):
