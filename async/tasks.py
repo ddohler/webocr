@@ -29,7 +29,9 @@ def determine_format(docid):
     
     m = magic.Magic(mime=True)
     doc.doc_file.open(mode='rb')
-    mime = m.from_buffer(doc.doc_file)
+    #Todo: Make sure reading first 1024 bytes is enough
+    mime = m.from_buffer(doc.doc_file.read(1024))
+    doc.doc_file.close()
     try:
         fmt = mime_to_fmt[mime] # Lookup table
     except KeyError:
@@ -38,7 +40,7 @@ def determine_format(docid):
     doc.file_format = fmt
     doc.save()
 
-    img_to_png.delay(docid)
+    doc_to_png.delay(docid)
 
 @task
 def doc_to_png(docid):
@@ -46,7 +48,7 @@ def doc_to_png(docid):
 
     if doc.file_format == 'pdf':
         split_pdf(doc)
-        pdf_to_png(doc)
+        pdfs_to_png(doc)
     elif doc.file_format == 'tif':
         split_tif(doc)
         img_to_png(doc)
