@@ -7,7 +7,7 @@ from django.http import HttpResponseRedirect
 import uuid
 
 from interface.forms import DocumentForm
-from interface.models import Document
+from interface.models import Document, OCRJob
 
 from async.tasks import determine_format
 
@@ -19,7 +19,6 @@ def main(request):
             #Create a skeleton Document instance with owner
             # Todo: Validation
             # Todo: Handle multiple files / provide batch
-            # Todo: Fire off async tasks
             d = Document(owner=request.user)
 
             #Create random name for unique internal filename
@@ -32,7 +31,9 @@ def main(request):
             d.color_depth='u'
 
             d.save()
-
+            
+            j = OCRJob(document=d,status='w')
+            j.save()
             determine_format.delay(d.pk)
 
             return HttpResponseRedirect('/')

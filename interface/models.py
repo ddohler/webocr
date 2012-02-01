@@ -43,9 +43,9 @@ class OCRJob(models.Model):
         ('c', 'Completed'),
     ))
 
-    conv_cost = models.IntegerField(null=True,blank=True) # File format conversion cost
-    bw_cost = models.IntegerField(null=True,blank=True) # B&W conversion cost
-    ocr_cost = models.IntegerField(null=True,blank=True) # OCR computation cost
+    conv_cost = models.FloatField(null=True,blank=True) # File format conversion cost (seconds)
+    bw_cost = models.FloatField(null=True,blank=True) # B&W conversion cost
+    ocr_cost = models.FloatField(null=True,blank=True) # OCR computation cost
 
     error_text = models.CharField(max_length=255,blank=True)
 # This next field may eventually contain hOCR

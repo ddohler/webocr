@@ -1,8 +1,9 @@
 from celery.task import task
-from interface.models import Document
+from interface.models import Document, OCRJob
 from pyPdf import PdfFileWriter, PdfFileReader
 import magic # Python wrapper for libmagic
-import os
+import os, subprocess
+from time import clock
 
 from interface.util import mime_to_fmt
 from settings import MEDIA_ROOT, PAGES_FOLDER
@@ -25,6 +26,12 @@ def is_valid_doc(docid):
 
 @task
 def determine_format(docid):
+    #Update OCR Job status
+    #Todo: Check for multiple objects?
+    job = OCRJob.objects.get(document=docid)
+    job.status = 'p'
+    job.save()
+
     doc = is_valid_doc(docid)
     
     m = magic.Magic(mime=True)
@@ -44,7 +51,15 @@ def determine_format(docid):
 
 @task
 def doc_to_png(docid):
+    job = OCRJob.objects.get(document=docid)
+    job.status = 'p'
+    job.save()
+
     doc = is_valid_doc(docid)
+
+    #Begin timing conversion cost
+    #Todo: This is buggy
+    start = clock()
 
     if doc.file_format == 'pdf':
         split_pdf(doc)
@@ -53,6 +68,10 @@ def doc_to_png(docid):
         split_tif(doc)
         img_to_png(doc)
 
+    job.conv_cost = clock() - start
+    job.save()
+
+#Todo: Once PDF is split, operate asynchronously on a per-page basis.
 def split_pdf(doc, folder=None):
     if folder == None:
         folder = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
@@ -77,10 +96,14 @@ def pdfs_to_png(doc, pdf_loc=None):
     pdf_files = os.listdir(pdf_loc)
     for s in pdf_files:
         if s[-3:] == 'pdf':
-            cmd = 'mogrify -density 300 -format png -path '+png_loc
-            cmd += ' '+pdf_loc + s
-            print cmd
-            os.system(cmd)
+            cmd = ['mogrify', '-density', '300', '-format', 'png', '-path']
+            cmd.append(png_loc)
+            cmd.append(pdf_loc + s)
+            #print cmd
+            #os.system(cmd)
+            #Todo: Wait until child processes have completed
+            #before proceeding with b/w conversion
+            syscmd.delay(cmd)
 
 #Todo
 def split_tif(doc):
@@ -89,3 +112,8 @@ def split_tif(doc):
 #Todo
 def img_to_png(doc):
     pass
+
+@task # Thin wrapper to allow executing system commands asynchronously
+def syscmd(cmd):
+    #Todo: Handle errors
+    subprocess.call(cmd)
