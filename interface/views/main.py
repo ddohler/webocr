@@ -7,7 +7,7 @@ from django.http import HttpResponseRedirect
 import uuid
 
 from interface.forms import DocumentForm
-from interface.models import Document, OCRJob
+from interface.models import Document
 
 from async.tasks import determine_format
 
@@ -32,8 +32,6 @@ def main(request):
 
             d.save()
             
-            j = OCRJob(document=d,status='w')
-            j.save()
             determine_format.delay(d.pk)
 
             return HttpResponseRedirect('/')
