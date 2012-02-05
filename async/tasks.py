@@ -69,7 +69,6 @@ def doc_to_pages(docid):
         doc_page.save()
         convert_page.delay(doc_page)
 
-#Todo: Implement these three.
 #Todo: Make this extensible so we can build in other analysis easily
 @task
 def convert_page(page):
@@ -88,11 +87,13 @@ def convert_page(page):
     print "Done converting page "+str(page.page_number)
     binarize_page.delay(page)
 
+#TODO
 @task
 def binarize_page(page):
     print "Binarize page "+str(page.page_number)+"!"
     recognize_page.delay(page)
 
+#TODO
 @task
 def recognize_page(page):
     print "Recognize page "+str(page.page_number)+"!"
@@ -121,7 +122,7 @@ def split_to_files(doc, folder=None):
             page_prefixes.append(folder)
 
     elif doc.file_format == 'tif':
-        #Todo: Split a multi-page tiff. Don't feel like messing with PIL atm
+        #TODO: Split a multi-page tiff. Don't feel like messing with PIL atm
         pass
     else: #Guaranteed single-page formats
         prefix = folder
@@ -129,26 +130,3 @@ def split_to_files(doc, folder=None):
         page_prefixes.append(prefix)
 
     return page_prefixes
-
-#Uses ImageMagick to convert PDFs to PNG
-#This function will soon disappear.
-def pdfs_to_png(doc, pdf_loc=None):
-    if pdf_loc == None:
-       pdf_loc = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
-
-    png_loc = pdf_loc + "png/"
-    os.mkdir(png_loc) #Todo: Check for pre-existing directory
-
-    pdf_files = os.listdir(pdf_loc)
-    for s in pdf_files:
-        if s[-3:] == 'pdf':
-            #print cmd
-            #os.system(cmd)
-            #Todo: Wait until child processes have completed
-            #before proceeding with b/w conversion
-            syscmd.delay(cmd)
-
-@task # Thin wrapper to allow executing system commands asynchronously
-def syscmd(cmd):
-    #Todo: Handle errors
-    subprocess.call(cmd)
