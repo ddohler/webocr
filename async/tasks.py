@@ -1,10 +1,11 @@
+#TODO: Switch to celery logging
 from celery.task import task
 from django.core.files import File
 from interface.models import Document, DocumentPage
 from pyPdf import PdfFileWriter, PdfFileReader
 import magic # Python wrapper for libmagic
 import os, subprocess
-from time import clock
+from time import time
 from datetime import datetime 
 import shutil
 
@@ -62,7 +63,7 @@ def doc_to_pages(docid):
     for i in range(doc.num_pages):
         doc_page = DocumentPage(document=doc,
                 files_prefix=page_file_prefixes[i],
-                stage_output_extension=doc.file_format,
+                stage_output_extension='.'+doc.file_format,
                 page_number=i,
                 start_process_date=datetime.now(),
                 status='w')
@@ -70,33 +71,63 @@ def doc_to_pages(docid):
         convert_page.delay(doc_page)
 
 #Todo: Make this extensible so we can build in other analysis easily
+#TODO: Improve both Tesseract and OCRopus usage
 @task
 def convert_page(page):
     print "Convert page "+str(page.page_number)+"!"
-    start = clock()
+    start = time()
+    page.status='c'
+    page.save()
 
     cmd = ['mogrify', '-density', '300', '-format', 'png', '-path']
     cmd.append(page.files_prefix)
-    cmd.append(page.files_prefix+str(page.page_number)+'.'+page.stage_output_extension)
-    print ''.join(cmd)
+    cmd.append(page.files_prefix+str(page.page_number)+page.stage_output_extension)
+    #print ''.join(cmd)
     subprocess.call(cmd)
     
-    page.stage_output_extension = 'png'
-    page.convert_time = clock() - start
+    page.stage_output_extension = '.png'
+    page.is_convert_done = True
+    page.convert_time = time() - start
     page.save()
     print "Done converting page "+str(page.page_number)
     binarize_page.delay(page)
 
-#TODO
 @task
 def binarize_page(page):
     print "Binarize page "+str(page.page_number)+"!"
+    start = time()
+    page.status = 'b'
+    page.save()
+
+    cmd = ['ocropus-binarize', '-o', page.files_prefix+str(page.page_number)]
+    cmd.append(page.files_prefix+str(page.page_number)+page.stage_output_extension)
+    #print ''.join(cmd)
+    subprocess.call(cmd)
+
+    page.stage_output_extension = '/0001.bin.png'
+    page.is_binarize_done = True
+    page.binarize_time = time() - start
+    page.save()
+    print "Done binarizing page "+str(page.page_number)
+
     recognize_page.delay(page)
 
-#TODO
 @task
 def recognize_page(page):
     print "Recognize page "+str(page.page_number)+"!"
+    start = time()
+    page.status = 'r'
+    page.save()
+    
+    cmd = ['tesseract', page.files_prefix+str(page.page_number)+page.stage_output_extension]
+    cmd += [page.files_prefix+str(page.page_number),'-l','kat']
+    print ''.join(cmd)
+    subprocess.call(cmd)
+
+    page.is_recognize_done = True
+    page.recognize_time = time() - start
+    page.save()
+
     print "Done!"
 
 #Split multi-page files into one file per page, return paths

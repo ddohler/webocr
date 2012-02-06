@@ -55,7 +55,7 @@ class DocumentPage(models.Model):
     #page_file = models.FileField(upload_to=page_upload_path,max_length=255)
     files_prefix = models.CharField(blank=True,max_length=255)
     #The file extension for the most recent stage's output.
-    stage_output_extension = models.CharField(blank=True,max_length=3)
+    stage_output_extension = models.CharField(blank=True,max_length=32)
     #This page's number within document. Zero-indexed
     page_number = models.IntegerField()
 
