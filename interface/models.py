@@ -20,6 +20,7 @@ class Document(models.Model):
     internal_name = models.CharField(max_length=220)
     
     num_pages = models.IntegerField(null=True,blank=True)
+    finished_count = models.IntegerField(default=0)
 
     file_format = models.CharField(max_length=3, choices=(
         ('pdf', 'Adobe PDF'),
@@ -37,9 +38,8 @@ class Document(models.Model):
     ))
 
 # Generate a filesystem path for document files to be uploaded to.
-#TODO: Because these files have been already been created, this results
-# needless duplication, with 0.pdf becoming 0_1.pdf. Create a custom
-# field that acts the same way as the FileField, but which isn't oriented
+#TODO: Create a custom field 
+# that acts the same way as the FileField, but which isn't oriented
 # toward uploaded files, or figure out a way to use the existing one better.
 def page_upload_path(instance=None,filename=None):
     if filename is not None and instance is not None:

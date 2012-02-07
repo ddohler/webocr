@@ -12,8 +12,8 @@ import shutil
 from interface.util import mime_to_fmt
 from settings import MEDIA_ROOT, PAGES_FOLDER
 
-#Todo: Figure out returns and error codes
-#Todo: refactor interface to doc_manager or something
+#TODO: Figure out returns and error codes
+#TODO: refactor interface to doc_manager or something
 
 def is_valid_doc(docid):
     if docid is not None:
@@ -21,21 +21,21 @@ def is_valid_doc(docid):
 
         if doc is None:
             pass
-            #Todo: Error
+            #TODO: Error
         else:
             return doc
     else:
         pass
-        #Todo: Error
+        #TODO: Error
 
 @task
 def determine_format(docid):
-    #Todo: Check for multiple objects?
+    #TODO: Check for multiple objects?
     doc = is_valid_doc(docid)
     
     m = magic.Magic(mime=True)
     doc.doc_file.open(mode='rb')
-    #Todo: Make sure reading first 1024 bytes is enough
+    #TODO: Make sure reading first 1024 bytes is enough
     mime = m.from_buffer(doc.doc_file.read(1024))
     doc.doc_file.close()
     try:
@@ -70,7 +70,7 @@ def doc_to_pages(docid):
         doc_page.save()
         convert_page.delay(doc_page)
 
-#Todo: Make this extensible so we can build in other analysis easily
+#TODO: Make this extensible so we can build in other analysis easily
 #TODO: Improve both Tesseract and OCRopus usage
 @task
 def convert_page(page):
@@ -121,13 +121,27 @@ def recognize_page(page):
     
     cmd = ['tesseract', page.files_prefix+str(page.page_number)+page.stage_output_extension]
     cmd += [page.files_prefix+str(page.page_number),'-l','kat']
-    print ''.join(cmd)
+    #print ''.join(cmd)
     subprocess.call(cmd)
 
     page.is_recognize_done = True
+# Maybe split this into its own task?
+    page.stage_output_extension = '.txt'
     page.recognize_time = time() - start
+    page.status = 'f'
+    txt_file_path = page.files_prefix+str(page.page_number)+'.txt'
+    txt_file = codecs.open(txt_file_path,encoding='utf-8')
+    page.text = txt_file.read()
     page.save()
 
+    finish_page.delay(page)
+
+#This task cannot be parellelized.
+@task
+def finish_page(page):
+    doc = Document.objects.get(pk=page.document.pk)
+    doc.finished_count += 1
+    doc.save()
     print "Done!"
 
 #Split multi-page files into one file per page, return paths
@@ -136,7 +150,7 @@ def recognize_page(page):
 def split_to_files(doc, folder=None):
     if folder == None:
         folder = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
-        os.mkdir(folder) #Todo: Check for pre-existing directory
+        os.mkdir(folder) #TODO: Check for pre-existing directory
 
     page_prefixes = []
     doc.doc_file.open(mode="rb")

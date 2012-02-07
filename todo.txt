@@ -1,0 +1,3 @@
+Be smarter about file types (i.e., avoid unnecessary processing)
+Detect and provide warnings for low-quality images
+

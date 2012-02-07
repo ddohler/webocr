@@ -6,6 +6,8 @@ admin.autodiscover()
 
 from interface.views import main, documents
 
+#TODO: Make sure these patterns are okay, I have a feeling they suck
+#TODO: Does login/logout really need to be this complicated?
 urlpatterns = patterns('',
     # Example:
     # (r'^ocrweb/', include('ocrweb.foo.urls')),
@@ -14,6 +16,7 @@ urlpatterns = patterns('',
     #Todo It might be better to do these as a Form with GET, not sure
     (r'^documents/getdoc/([a-f0-9-]+)/', documents.get_doc),
     (r'^documents/delete/([a-f0-9-]+)/', documents.delete),
+    (r'^documents/gettext/([a-f0-9-]+)/',documents.get_text),
     url(r'^login/', login, {'template_name': 'login.html'},name="login"),
     url(r'^logout/', logout, {'next_page': '/'}, name="logout"),
     # Uncomment the admin/doc line below to enable admin documentation:
