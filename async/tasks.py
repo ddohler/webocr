@@ -1,3 +1,4 @@
+#TODO: Test new file handling, pdf image extraction
 #TODO: Switch to celery logging
 from celery.task import task
 from django.core.files import File
@@ -8,13 +9,15 @@ import os, subprocess
 from time import time
 from datetime import datetime 
 import shutil
+import codecs
 
 from interface.util import mime_to_fmt
 from settings import MEDIA_ROOT, PAGES_FOLDER
 
 #TODO: Figure out returns and error codes
 #TODO: refactor interface to doc_manager or something
-
+#TODO: Refactor to use folder / file storage instead of
+# inserting the page number everywhere.
 def is_valid_doc(docid):
     if docid is not None:
         doc = Document.objects.get(pk=docid)
@@ -51,10 +54,11 @@ def determine_format(docid):
 @task
 def doc_to_pages(docid):
     doc = is_valid_doc(docid)
-
-    page_file_prefixes = split_to_files(doc)
+    print "Splitting document..."
+    page_files = split_to_files(doc)
     
-    doc.num_pages = len(page_file_prefixes)
+    #TODO: Add intelligence here in case num imgs != num pages
+    doc.num_pages = len(page_files)
     doc.save()
     
     # Creates DocumentPages for each file returned by
@@ -62,8 +66,8 @@ def doc_to_pages(docid):
     # tasks for each DocumentPage.
     for i in range(doc.num_pages):
         doc_page = DocumentPage(document=doc,
-                files_prefix=page_file_prefixes[i],
-                stage_output_extension='.'+doc.file_format,
+                files_prefix=page_files[i][0],
+                stage_output_extension=page_files[i][1],
                 page_number=i,
                 start_process_date=datetime.now(),
                 status='w')
@@ -81,11 +85,11 @@ def convert_page(page):
 
     cmd = ['mogrify', '-density', '300', '-format', 'png', '-path']
     cmd.append(page.files_prefix)
-    cmd.append(page.files_prefix+str(page.page_number)+page.stage_output_extension)
+    cmd.append(page.files_prefix+page.stage_output_extension)
     #print ''.join(cmd)
     subprocess.call(cmd)
     
-    page.stage_output_extension = '.png'
+    page.stage_output_extension = page.stage_output_extension[:-3]+'ppm'
     page.is_convert_done = True
     page.convert_time = time() - start
     page.save()
@@ -100,11 +104,12 @@ def binarize_page(page):
     page.save()
 
     cmd = ['ocropus-binarize', '-o', page.files_prefix+str(page.page_number)]
-    cmd.append(page.files_prefix+str(page.page_number)+page.stage_output_extension)
+    cmd.append(page.files_prefix+page.stage_output_extension)
     #print ''.join(cmd)
     subprocess.call(cmd)
 
-    page.stage_output_extension = '/0001.bin.png'
+    page.files_prefix = page.files_prefix+str(page.page_number)+"/"
+    page.stage_output_extension = '0001.bin.png'
     page.is_binarize_done = True
     page.binarize_time = time() - start
     page.save()
@@ -119,14 +124,14 @@ def recognize_page(page):
     page.status = 'r'
     page.save()
     
-    cmd = ['tesseract', page.files_prefix+str(page.page_number)+page.stage_output_extension]
+    cmd = ['tesseract', page.files_prefix+page.stage_output_extension]
     cmd += [page.files_prefix+str(page.page_number),'-l','kat']
     #print ''.join(cmd)
     subprocess.call(cmd)
 
     page.is_recognize_done = True
 # Maybe split this into its own task?
-    page.stage_output_extension = '.txt'
+    page.stage_output_extension = str(page.page_number)+'.txt'
     page.recognize_time = time() - start
     page.status = 'f'
     txt_file_path = page.files_prefix+str(page.page_number)+'.txt'
@@ -136,7 +141,7 @@ def recognize_page(page):
 
     finish_page.delay(page)
 
-#This task cannot be parellelized.
+#Only one worker should deal with this, otherwise potential race condition.
 @task
 def finish_page(page):
     doc = Document.objects.get(pk=page.document.pk)
@@ -145,26 +150,32 @@ def finish_page(page):
     print "Done!"
 
 #Split multi-page files into one file per page, return paths
-#This must NOT output files in a format that are different than
-#the document format.
+#as a list of (folder,file) pairs. [(folder,f1),...]
 def split_to_files(doc, folder=None):
     if folder == None:
         folder = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
         os.mkdir(folder) #TODO: Check for pre-existing directory
 
-    page_prefixes = []
-    doc.doc_file.open(mode="rb")
+    page_files = []
+    #doc.doc_file.open(mode="rb")
 
+    
     if doc.file_format == 'pdf':
-        iPdf = PdfFileReader(doc.doc_file)
+        cmd = ['pdfimages',doc.doc_file.path,folder]
+        subprocess.call(cmd)
 
-        for i in range(iPdf.getNumPages()):
-            oPdf = PdfFileWriter()
-            oPdf.addPage(iPdf.getPage(i))
-            file_path = ''.join([folder,str(i),'.pdf'])
-            oPdf.write(file(file_path,'w'))
-
-            page_prefixes.append(folder)
+        files = os.listdir(folder)
+        files.sort()
+        page_files = [(folder,f) for f in files]
+#        iPdf = PdfFileReader(doc.doc_file)
+#
+#        for i in range(iPdf.getNumPages()):
+#            oPdf = PdfFileWriter()
+#            oPdf.addPage(iPdf.getPage(i))
+#            file_path = ''.join([folder,str(i),'.pdf'])
+#            oPdf.write(file(file_path,'w'))
+#
+#            page_prefixes.append(folder)
 
     elif doc.file_format == 'tif':
         #TODO: Split a multi-page tiff. Don't feel like messing with PIL atm
@@ -172,6 +183,6 @@ def split_to_files(doc, folder=None):
     else: #Guaranteed single-page formats
         prefix = folder
         shutil.copy(str(doc.doc_file), prefix+'0.'+doc.file_format)
-        page_prefixes.append(prefix)
+        page_files.append((prefix,'0.'+doc.file_format))
 
-    return page_prefixes
+    return page_files
