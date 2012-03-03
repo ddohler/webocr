@@ -3,7 +3,6 @@
 from celery.task import task
 from django.core.files import File
 from interface.models import Document, DocumentPage
-from pyPdf import PdfFileWriter, PdfFileReader
 import magic # Python wrapper for libmagic
 import os, subprocess
 from time import time
