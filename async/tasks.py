@@ -167,15 +167,6 @@ def split_to_files(doc, folder=None):
         files = os.listdir(folder)
         files.sort()
         page_files = [(folder,f) for f in files]
-#        iPdf = PdfFileReader(doc.doc_file)
-#
-#        for i in range(iPdf.getNumPages()):
-#            oPdf = PdfFileWriter()
-#            oPdf.addPage(iPdf.getPage(i))
-#            file_path = ''.join([folder,str(i),'.pdf'])
-#            oPdf.write(file(file_path,'w'))
-#
-#            page_prefixes.append(folder)
 
     elif doc.file_format == 'tif':
         #TODO: Split a multi-page tiff. Don't feel like messing with PIL atm

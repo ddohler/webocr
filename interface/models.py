@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 #TODO: Bring back OCRJob class and use it to handle errors and overall
 # progress
-
+#TODO: Change DocumentPage to DocumentImage
 # Generate a filesystem path for document files to be uploaded to.
 def doc_upload_path(instance=None,filename=None):
     if filename is not None and instance is not None:
