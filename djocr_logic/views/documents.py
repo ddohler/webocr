@@ -4,8 +4,8 @@ from django.template import RequestContext
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, HttpResponseRedirect
 
-from interface.models import Document,DocumentPage
-from interface.util import fmt_to_mime
+from djocr_logic.models import Document,DocumentPage
+from djocr_logic.util import fmt_to_mime
 
 @login_required
 def main(request):
