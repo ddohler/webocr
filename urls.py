@@ -4,7 +4,7 @@ from django.contrib.auth.views import login, logout
 from django.contrib import admin
 admin.autodiscover()
 
-from interface.views import main, documents
+from djocr_logic.views import main, documents
 
 #TODO: Make sure these patterns are okay, I have a feeling they suck
 #TODO: Does login/logout really need to be this complicated?

@@ -12,10 +12,10 @@
 	{% for doc in docs %}
 	<tr><td>{{doc.upload_name}}</td>
 	    <td>{{doc.file_format}}</td>
-	    <td><a href="{% url interface.views.documents.get_doc doc.internal_name %}">Link</a></td>
-	    <td><a href="{% url interface.views.documents.delete doc.internal_name %}">Del</a></td>
+	    <td><a href="{% url djocr_logic.views.documents.get_doc doc.internal_name %}">Link</a></td>
+	    <td><a href="{% url djocr_logic.views.documents.delete doc.internal_name %}">Del</a></td>
 	    <td>{% ifequal doc.num_pages doc.finished_count %}
-		    <a href="{% url interface.views.documents.get_text doc.internal_name %}">Download Text</a>
+		    <a href="{% url djocr_logic.views.documents.get_text doc.internal_name %}">Download Text</a>
 		{% else %}Processing...
 		{% endifequal %}
 	    </td>

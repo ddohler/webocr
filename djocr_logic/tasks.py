@@ -2,7 +2,7 @@
 #TODO: Switch to celery logging
 from celery.task import task
 from django.core.files import File
-from interface.models import Document, DocumentPage
+from models import Document, DocumentPage
 import magic # Python wrapper for libmagic
 import os, subprocess
 from time import time
@@ -10,11 +10,10 @@ from datetime import datetime
 import shutil
 import codecs
 
-from interface.util import mime_to_fmt
+from util import mime_to_fmt
 from settings import MEDIA_ROOT, PAGES_FOLDER
 
 #TODO: Figure out returns and error codes
-#TODO: refactor interface to doc_manager or something
 #TODO: Refactor to use folder / file storage instead of
 # inserting the page number everywhere.
 def is_valid_doc(docid):

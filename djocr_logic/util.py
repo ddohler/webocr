@@ -10,7 +10,7 @@ def doc_upload_path(instance=None,filename=None):
 
 def page_upload_path(instance=None,filename=None):
     if filename is not None and instance is not None:
-        from interface.models import Document #TODO: Does this work?
+        from djocr_logic.models import Document #TODO: Does this work?
         doc = Document.objects.get(pk=instance.document)
         return doc.internal_name + "/pages/" + filename
 
