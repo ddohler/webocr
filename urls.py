@@ -12,7 +12,7 @@ urlpatterns = patterns('',
     # Example:
     # (r'^ocrweb/', include('ocrweb.foo.urls')),
     (r'^$', main.main),
-    (r'^documents/$', documents.main),
+    url(r'^documents/$', documents.main,name="documents"),
     #Todo It might be better to do these as a Form with GET, not sure
     (r'^documents/getdoc/([a-f0-9-]+)/', documents.get_doc),
     (r'^documents/delete/([a-f0-9-]+)/', documents.delete),

@@ -2,10 +2,11 @@
 {% load i18n %}
 
 {% block title %}{% trans "Home" %}{% endblock title %}
-{% block body %}
+{% block content %}
 <form enctype="multipart/form-data" action="/" method="post">{% csrf_token %}
 	{{ form.as_p }}
 	<input type="submit" value="Upload" />
 </form>
+<p><a href="{% url documents %}">My Documents</a></p>
 <p><a href="{% url logout %}">Log out</a></p>
-{% endblock body %}
+{% endblock content %}

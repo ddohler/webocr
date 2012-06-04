@@ -7,7 +7,7 @@ from django.http import HttpResponseRedirect
 import uuid
 
 from djocr_logic.forms import DocumentForm
-from djocr_logic.models import Document
+from djocr_logic.models import Document, DocumentOCRJob
 
 from djocr_logic.tasks import determine_format
 
@@ -32,9 +32,12 @@ def main(request):
 
             d.save()
             
+            j = DocumentOCRJob(document=d)
+            j.save()
+
             determine_format.delay(d.pk)
 
-            return HttpResponseRedirect('/')
+            return HttpResponseRedirect('/documents')
     else:
         form = DocumentForm()
 
