@@ -1,8 +1,11 @@
-#TODO: Test new file handling, pdf image extraction
 #TODO: Switch to celery logging
+#TODO: Generate ErrorMessages
+#TODO: Detect image resolution
+#TODO: Cleanup
+#TODO: Add time tracking
 from celery.task import task
 from django.core.files import File
-from models import Document, DocumentPage
+from models import Document, DocumentPage, DocumentOCRJob
 import magic # Python wrapper for libmagic
 import os, subprocess
 from time import time
@@ -55,7 +58,9 @@ def doc_to_pages(docid):
     print "Splitting document..."
     page_files = split_to_files(doc)
     
-    #TODO: Add intelligence here in case num imgs != num pages
+    #TODO: Add intelligence here for PDFs in case num imgs != num pages
+    #TODO: Detect PDFs with embedded text (which will be discarded)
+    #      and raise a warning.
     doc.num_pages = len(page_files)
     doc.save()
     
@@ -131,6 +136,7 @@ def recognize_page(page):
 # Maybe split this into its own task?
     page.stage_output_extension = str(page.page_number)+'.txt'
     page.recognize_time = time() - start
+    
     page.status = 'f'
     txt_file_path = page.files_prefix+str(page.page_number)+'.txt'
     txt_file = codecs.open(txt_file_path,encoding='utf-8')
@@ -139,13 +145,30 @@ def recognize_page(page):
 
     finish_page.delay(page)
 
-#Only one worker should deal with this, otherwise potential race condition.
+#FIFO - Only one worker should deal with this, otherwise potential race condition.
 @task
 def finish_page(page):
-    doc = Document.objects.get(pk=page.document.pk)
-    doc.finished_count += 1
-    doc.save()
+    job = DocumentOCRJob.objects.get(document=page.document)
+    job.processed_pages += 1
+    
+    #print "%d:%d" %(job.processed_pages,page.document.num_pages)
+    if job.processed_pages == page.document.num_pages:
+        job.is_finished = True
+
+    job.time_so_far += page.convert_time + page.binarize_time + page.recognize_time
+    job.save()
+    page.finish_process_date = datetime.now()
+    page.save()
     print "Done!"
+
+#FIFO
+#TODO
+@task
+def update_job_time(page):
+    pass
+    #job = DocumentOCRJob.objects.get(document=page.document)
+    #job.time_so_far = t
+    #job.save()
 
 #Split multi-page files into one file per page, return paths
 #as a list of (folder,file) pairs. [(folder,f1),...]
@@ -156,7 +179,6 @@ def split_to_files(doc, folder=None):
 
     page_files = []
     #doc.doc_file.open(mode="rb")
-
     
     if doc.file_format == 'pdf':
         cmd = ['pdfimages',doc.doc_file.path,folder]

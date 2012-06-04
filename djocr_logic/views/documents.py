@@ -4,15 +4,15 @@ from django.template import RequestContext
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, HttpResponseRedirect
 
-from djocr_logic.models import Document,DocumentPage
+from djocr_logic.models import Document,DocumentPage,DocumentOCRJob
 from djocr_logic.util import fmt_to_mime
 
 @login_required
 def main(request):
-    all_docs = Document.objects.filter(owner=request.user)
+    all_jobs = DocumentOCRJob.objects.filter(document__owner=request.user)
 
     return render_to_response('documents.html', RequestContext(request, {
-        'docs': all_docs,
+        'jobs': all_jobs,
     }))
     #TODO: I'm really not sure that using the internal id is the best
     # way to do this.
