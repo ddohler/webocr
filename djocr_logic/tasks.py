@@ -1,7 +1,6 @@
 #TODO: Switch to celery logging
 #TODO: Generate ErrorMessages
 #TODO: Detect image resolution
-#TODO: Cleanup
 #TODO: Add time tracking
 from celery.task import task
 from django.core.files import File
@@ -169,6 +168,14 @@ def update_job_time(page):
     #job = DocumentOCRJob.objects.get(document=page.document)
     #job.time_so_far = t
     #job.save()
+
+#TODO: Protections so this doesn't destroy the file system.
+@task
+def clean_doc_files(path):
+    """Currently, simply deletes an entire folder structure starting with path."""
+    cmd = ["rm", "-rf", MEDIA_ROOT+path]
+    #print cmd
+    subprocess.call(cmd)
 
 #Split multi-page files into one file per page, return paths
 #as a list of (folder,file) pairs. [(folder,f1),...]

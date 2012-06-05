@@ -6,6 +6,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 
 from djocr_logic.models import Document,DocumentPage,DocumentOCRJob
 from djocr_logic.util import fmt_to_mime
+from djocr_logic.tasks import clean_doc_files
 
 @login_required
 def main(request):
@@ -50,8 +51,10 @@ def delete(request,internal_id):
     user_docs = Document.objects.filter(owner=request.user)
     doc = get_object_or_404(user_docs, internal_name=internal_id)
 
-    #Todo: Figure out how to delete the folders too.
     doc.doc_file.delete()
+    folder = doc.internal_name
     doc.delete()
+
+    clean_doc_files.delay(folder)
 
     return HttpResponseRedirect('/documents/')
