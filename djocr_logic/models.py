@@ -91,6 +91,7 @@ class DocumentPage(models.Model):
 class DocumentOCRJob(models.Model):
     document = models.ForeignKey(Document)
     is_finished = models.BooleanField(default=False)
+    had_error = models.BooleanField(default=False)
     processed_pages = models.IntegerField(default=0)
 
     time_so_far = models.FloatField(default=0)

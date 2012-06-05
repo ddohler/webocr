@@ -55,6 +55,7 @@ def determine_format(docid):
 def doc_to_pages(docid):
     doc = is_valid_doc(docid)
     print "Splitting document..."
+    #TODO: Consider splitting to multi-page TIFF so tesseract can learn
     page_files = split_to_files(doc)
     
     #TODO: Add intelligence here for PDFs in case num imgs != num pages
@@ -74,6 +75,7 @@ def doc_to_pages(docid):
                 start_process_date=datetime.now(),
                 status='w')
         doc_page.save()
+
         convert_page.delay(doc_page)
 
 #TODO: Make this extensible so we can build in other analysis easily
@@ -89,7 +91,12 @@ def convert_page(page):
     cmd.append(page.files_prefix)
     cmd.append(page.files_prefix+page.stage_output_extension)
     #print ''.join(cmd)
-    subprocess.call(cmd)
+    try:
+        subprocess.check_call(cmd)
+        #raise subprocess.CalledProcessError(cmd="command", returncode=2)
+    except subprocess.CalledProcessError as e:
+        print(e)
+        handle_error(page)
     
     page.stage_output_extension = page.stage_output_extension[:-3]+'ppm'
     page.is_convert_done = True
@@ -108,7 +115,11 @@ def binarize_page(page):
     cmd = ['ocropus-binarize', '-o', page.files_prefix+str(page.page_number)]
     cmd.append(page.files_prefix+page.stage_output_extension)
     #print ''.join(cmd)
-    subprocess.call(cmd)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as e:
+        print(e)
+        handle_error(page)
 
     page.files_prefix = page.files_prefix+str(page.page_number)+"/"
     page.stage_output_extension = '0001.bin.png'
@@ -129,9 +140,14 @@ def recognize_page(page):
     cmd = ['tesseract', page.files_prefix+page.stage_output_extension]
     cmd += [page.files_prefix+str(page.page_number),'-l','kat']
     #print ''.join(cmd)
-    subprocess.call(cmd)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as e:
+        print(e)
+        handle_error(page)
 
     page.is_recognize_done = True
+# Read text file output, store in database
 # Maybe split this into its own task?
     page.stage_output_extension = str(page.page_number)+'.txt'
     page.recognize_time = time() - start
@@ -160,6 +176,14 @@ def finish_page(page):
     page.save()
     print "Done!"
 
+# Super basic error handling. If error occurred, store to job instance.
+# Probably will go away later once pipeline is implemented.
+def handle_error(page):
+    job = DocumentOCRJob.objects.get(document=page.document)
+
+    job.had_error = True
+    job.save()
+
 #FIFO
 #TODO
 @task
@@ -175,7 +199,7 @@ def clean_doc_files(path):
     """Currently, simply deletes an entire folder structure starting with path."""
     cmd = ["rm", "-rf", MEDIA_ROOT+path]
     #print cmd
-    subprocess.call(cmd)
+    subprocess.check_call(cmd)
 
 #Split multi-page files into one file per page, return paths
 #as a list of (folder,file) pairs. [(folder,f1),...]
@@ -189,7 +213,11 @@ def split_to_files(doc, folder=None):
     
     if doc.file_format == 'pdf':
         cmd = ['pdfimages',doc.doc_file.path,folder]
-        subprocess.call(cmd)
+        try:
+            subprocess.check_call(cmd)
+        except subprocess.CalledProcessError as e:
+            print(e)
+            handle_error(page)
 
         files = os.listdir(folder)
         files.sort()
