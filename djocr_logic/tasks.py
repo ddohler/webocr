@@ -98,7 +98,7 @@ def convert_page(page):
         print(e)
         handle_error(page)
     
-    page.stage_output_extension = page.stage_output_extension[:-3]+'ppm'
+    page.stage_output_extension = page.stage_output_extension[:-3]+'png'
     page.is_convert_done = True
     page.convert_time = time() - start
     page.save()
