@@ -42,6 +42,7 @@ def determine_format(docid):
     mime = m.from_buffer(doc.doc_file.read(1024))
     doc.doc_file.close()
     try:
+        #TODO: Why limit myself? Just use mime-type directly.
         fmt = mime_to_fmt[mime] # Lookup table
     except KeyError:
         fmt = 'unk'
@@ -228,7 +229,9 @@ def split_to_files(doc, folder=None):
         pass
     else: #Guaranteed single-page formats
         prefix = folder
-        shutil.copy(str(doc.doc_file), prefix+'0.'+doc.file_format)
+        #print "Prefix: " + str(prefix)
+        #print "MEDIA_ROOT+File: " + MEDIA_ROOT + str(doc.doc_file)
+        shutil.copy(MEDIA_ROOT+str(doc.doc_file), prefix+'0.'+doc.file_format)
         page_files.append((prefix,'0.'+doc.file_format))
 
     return page_files
