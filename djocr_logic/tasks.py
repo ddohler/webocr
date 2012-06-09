@@ -1,7 +1,6 @@
 #TODO: Switch to celery logging
 #TODO: Generate ErrorMessages
 #TODO: Detect image resolution
-#TODO: Add time tracking
 from celery.task import task
 from django.core.files import File
 from models import Document, DocumentPage, DocumentOCRJob
@@ -12,58 +11,67 @@ from datetime import datetime
 import shutil
 import codecs
 
-from util import mime_to_fmt
+import util
 from settings import MEDIA_ROOT, PAGES_FOLDER
 
 #TODO: Figure out returns and error codes
 #TODO: Refactor to use folder / file storage instead of
 # inserting the page number everywhere.
-def is_valid_doc(docid):
-    if docid is not None:
-        doc = Document.objects.get(pk=docid)
-
-        if doc is None:
-            pass
-            #TODO: Error
-        else:
-            return doc
-    else:
-        pass
-        #TODO: Error
-
 @task
-def determine_format(docid):
+def document_analysis(docid):
     #TODO: Check for multiple objects?
-    doc = is_valid_doc(docid)
+    doc = util.is_valid_doc(docid)
     
-    m = magic.Magic(mime=True)
-    doc.doc_file.open(mode='rb')
-    #TODO: Make sure reading first 1024 bytes is enough
-    mime = m.from_buffer(doc.doc_file.read(1024))
-    doc.doc_file.close()
-    try:
-        #TODO: Why limit myself? Just use mime-type directly.
-        fmt = mime_to_fmt[mime] # Lookup table
-    except KeyError:
-        fmt = 'unk'
+    doc.file_format = util.determine_format(doc)
+    ### Counting pages and repairing damaged documents ###
+    num_pages = util.count_pages(doc)
+    #TODO: The repair command doesn't quite work; need to make a copy first
+    # or update the object's field.
+    #if num_pages == -1 and doc.file_format == 'pdf':
+        # Try to repair damaged PDF
+    #    cmd = ['pdftk', MEDIA_ROOT+doc.doc_file, 'output', MEDIA_ROOT+doc.doc_file]
+    #    try:
+    #        subprocess.check_call(cmd)
+    #    except subprocess.CalledProcessError as e:
+    #        print(e)
+            #TODO: More error handling if necessary
 
-    doc.file_format = fmt
+        #Try again
+    #    num_pages = util.count_pages(doc)
+        #If it's still undetectable there's not much more we can do
+        #TODO: Report error, image cannot be processed.
+
+    if doc.file_format == 'pdf':
+        num_imgs = util.count_images(doc)
+        has_text = util.detect_text(doc)
+    else:
+        num_imgs = num_pages #For TIFFS num_pages might be >1
+        has_text = False
+
+    # Decide what to do
+    if has_text == False and num_imgs == num_pages: #Simple case
+        #print "Pages: %d, Images: %d, Text: %d" %(num_pages,num_imgs,has_text)
+        doc_to_pages.delay(docid)
+    elif has_text == True and num_imgs == 0: #Nothing to OCR
+        #print "Pages: %d, Images: %d, Text: %d" %(num_pages,num_imgs,has_text)
+        pass #Output text directly
+    elif has_text == True and num_imgs > 0: #Mixed image / text
+        #print "Pages: %d, Images: %d, Text: %d" %(num_pages,num_imgs,has_text)
+        pass #For now, rasterize pages, then OCR
+    else: #Fallback to rasterization
+        #print "Pages: %d, Images: %d, Text: %d" %(num_pages,num_imgs,has_text)
+        pass #rasterize and OCR
+
+    doc.num_pages = num_pages
     doc.save()
-
-    doc_to_pages.delay(docid)
 
 @task
 def doc_to_pages(docid):
-    doc = is_valid_doc(docid)
+    doc = util.is_valid_doc(docid)
     print "Splitting document..."
     #TODO: Consider splitting to multi-page TIFF so tesseract can learn
-    page_files = split_to_files(doc)
     
-    #TODO: Add intelligence here for PDFs in case num imgs != num pages
-    #TODO: Detect PDFs with embedded text (which will be discarded)
-    #      and raise a warning.
-    doc.num_pages = len(page_files)
-    doc.save()
+    page_files = util.split_to_files(doc)
     
     # Creates DocumentPages for each file returned by
     # split function, then launches conversion, etc.
@@ -201,37 +209,3 @@ def clean_doc_files(path):
     cmd = ["rm", "-rf", MEDIA_ROOT+path]
     #print cmd
     subprocess.check_call(cmd)
-
-#Split multi-page files into one file per page, return paths
-#as a list of (folder,file) pairs. [(folder,f1),...]
-def split_to_files(doc, folder=None):
-    if folder == None:
-        folder = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
-        os.mkdir(folder) #TODO: Check for pre-existing directory
-
-    page_files = []
-    #doc.doc_file.open(mode="rb")
-    
-    if doc.file_format == 'pdf':
-        cmd = ['pdfimages',doc.doc_file.path,folder]
-        try:
-            subprocess.check_call(cmd)
-        except subprocess.CalledProcessError as e:
-            print(e)
-            handle_error(page)
-
-        files = os.listdir(folder)
-        files.sort()
-        page_files = [(folder,f) for f in files]
-
-    elif doc.file_format == 'tif':
-        #TODO: Split a multi-page tiff. Don't feel like messing with PIL atm
-        pass
-    else: #Guaranteed single-page formats
-        prefix = folder
-        #print "Prefix: " + str(prefix)
-        #print "MEDIA_ROOT+File: " + MEDIA_ROOT + str(doc.doc_file)
-        shutil.copy(MEDIA_ROOT+str(doc.doc_file), prefix+'0.'+doc.file_format)
-        page_files.append((prefix,'0.'+doc.file_format))
-
-    return page_files

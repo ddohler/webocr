@@ -9,7 +9,7 @@ import uuid
 from djocr_logic.forms import DocumentForm
 from djocr_logic.models import Document, DocumentOCRJob
 
-from djocr_logic.tasks import determine_format
+from djocr_logic.tasks import document_analysis
 
 @login_required
 def main(request):
@@ -35,7 +35,7 @@ def main(request):
             j = DocumentOCRJob(document=d)
             j.save()
 
-            determine_format.delay(d.pk)
+            document_analysis.delay(d.pk)
 
             return HttpResponseRedirect('/documents')
     else:
