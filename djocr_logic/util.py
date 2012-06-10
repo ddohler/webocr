@@ -98,9 +98,8 @@ def detect_text(doc):
         has_text = None
     return has_text
 
-#Split multi-page files into one file per page, return paths
-#as a list of (folder,file) pairs. [(folder,f1),...]
 def split_to_files(doc, folder=None):
+    """Handles image-only formats (PDFs with no text, image files). Creates one file per page."""
     if folder == None:
         folder = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
         os.mkdir(folder) #TODO: Check for pre-existing directory
@@ -129,6 +128,28 @@ def split_to_files(doc, folder=None):
         #print "MEDIA_ROOT+File: " + MEDIA_ROOT + str(doc.doc_file)
         shutil.copy(MEDIA_ROOT+str(doc.doc_file), prefix+'0.'+doc.file_format)
         page_files.append((prefix,'0.'+doc.file_format))
+
+    return page_files
+
+def rasterize_pdf(doc, folder=None):
+    """Rasterizes a PDF's pages and returns the paths to the resulting images."""
+    if folder == None:
+        folder = MEDIA_ROOT + doc.internal_name + "/" + PAGES_FOLDER
+        os.mkdir(folder) #TODO: Check for pre-existing directory
+
+    page_files = []
+    cmd = ['convert', '-units','PixelsPerInch','-density','300','-quality','0']
+    cmd.append(doc.doc_file.path)
+    cmd.append(folder+'raster.png')
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as e:
+        print(e)
+        handle_error(page)
+
+    files = os.listdir(folder)
+    files.sort()
+    page_files = [(folder,f) for f in files]
 
     return page_files
 

@@ -42,6 +42,8 @@ def document_analysis(docid):
         #TODO: Report error, image cannot be processed.
 
     if doc.file_format == 'pdf':
+        #Counting the number of pages may fail; PyPdf doesn't handle corrupt
+        #PDFs well.
         num_imgs = util.count_images(doc)
         has_text = util.detect_text(doc)
     else:
@@ -51,28 +53,31 @@ def document_analysis(docid):
     # Decide what to do
     if has_text == False and num_imgs == num_pages: #Simple case
         #print "Pages: %d, Images: %d, Text: %d" %(num_pages,num_imgs,has_text)
-        doc_to_pages.delay(docid)
+        pages_from_images.delay(docid)
     elif has_text == True and num_imgs == 0: #Nothing to OCR
         #print "Pages: %d, Images: %d, Text: %d" %(num_pages,num_imgs,has_text)
-        pass #Output text directly
+        pages_from_rasterize.delay(docid) #Rasterize and output page images
     elif has_text == True and num_imgs > 0: #Mixed image / text
         #print "Pages: %d, Images: %d, Text: %d" %(num_pages,num_imgs,has_text)
-        pass #For now, rasterize pages, then OCR
+        pages_from_rasterize.delay(docid) #For now, rasterize pages, then OCR
     else: #Fallback to rasterization
         #print "Pages: %d, Images: %d, Text: %d" %(num_pages,num_imgs,has_text)
-        pass #rasterize and OCR
+        pages_from_rasterize.delay(docid) #rasterize and OCR
 
     doc.num_pages = num_pages
     doc.save()
 
 @task
-def doc_to_pages(docid):
+def pages_from_images(docid):
     doc = util.is_valid_doc(docid)
-    print "Splitting document..."
+    print "Constructing pages from images..."
     #TODO: Consider splitting to multi-page TIFF so tesseract can learn
     
     page_files = util.split_to_files(doc)
     
+    if doc.num_pages != len(page_files): #Page count stage couldn't determine
+        doc.num_pages = len(page_files)
+        doc.save()
     # Creates DocumentPages for each file returned by
     # split function, then launches conversion, etc.
     # tasks for each DocumentPage.
@@ -86,6 +91,29 @@ def doc_to_pages(docid):
         doc_page.save()
 
         convert_page.delay(doc_page)
+
+@task
+def pages_from_rasterize(docid):
+    """Rasterizes PDF pages, then continues with recognition."""
+    doc = util.is_valid_doc(docid)
+    print "Rasterizing pages..."
+    page_files = util.rasterize_pdf(doc)
+
+    if doc.num_pages != len(page_files): #Page count stage couldn't determine
+        doc.num_pages = len(page_files)
+        doc.save()
+
+    for i in range(doc.num_pages):
+        doc_page = DocumentPage(document=doc,
+                files_prefix=page_files[i][0],
+                stage_output_extension=page_files[i][1],
+                page_number=i,
+                start_process_date=datetime.now(),
+                status='w')
+        doc_page.save()
+    
+        #Docs already guaranteed converted, move to binarization.
+        binarize_page.delay(doc_page)
 
 #TODO: Make this extensible so we can build in other analysis easily
 #TODO: Improve both Tesseract and OCRopus usage
