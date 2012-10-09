@@ -2,24 +2,27 @@
 {% load i18n %}
 
 {% block title %}{% trans "My Documents" %}{% endblock title %}
-{% block body %}
+{% block content %}
 <table>
 	<tr>
 		<th>{% trans "Document name" %}</th>
 		<th>{% trans "Format" %}</th>
+		<th>{% trans "Num. Pages" %}</th>
 		<th>{% trans "Download original" %}</th>
 	</tr>
-	{% for doc in docs %}
-	<tr><td>{{doc.upload_name}}</td>
-	    <td>{{doc.file_format}}</td>
-	    <td><a href="{% url interface.views.documents.get_doc doc.internal_name %}">Link</a></td>
-	    <td><a href="{% url interface.views.documents.delete doc.internal_name %}">Del</a></td>
-	    <td>{% ifequal doc.num_pages doc.finished_count %}
-		    <a href="{% url interface.views.documents.get_text doc.internal_name %}">Download Text</a>
-		{% else %}Processing...
-		{% endifequal %}
+	{% for job in jobs %}
+	<tr><td>{{job.document.upload_name}}</td>
+	    <td>{{job.document.file_format}}</td>
+	    <td>{{job.document.num_pages}}</td>
+	    <td><a href="{% url djocr_logic.views.documents.get_doc job.document.internal_name %}">Link</a></td>
+	    <td><a href="{% url djocr_logic.views.documents.delete job.document.internal_name %}">Del</a></td>
+	    <td>{% if job.is_finished %}
+		    <a href="{% url djocr_logic.views.documents.get_text job.document.internal_name %}">Download Text</a>
+	        {% else %}Processing...{% endif %}
+		{% if job.had_error %} (error!){% endif %}
 	    </td>
         </tr>
 	{% endfor %}
 </table>
-{% endblock body %}
+<p><a href="{% url djocr_logic.views.main.main %}">Upload a document</a></p>
+{% endblock content %}

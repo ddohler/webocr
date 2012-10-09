@@ -1,22 +1,55 @@
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 import datetime
 from south.db import db
 from south.v2 import SchemaMigration
 from django.db import models
 
+
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        
-        # Changing field 'DocumentPage.stage_output_extension'
-        db.alter_column('interface_documentpage', 'stage_output_extension', self.gf('django.db.models.fields.CharField')(max_length=32))
+        # Adding model 'Document'
+        db.create_table('djocr_logic_document', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('owner', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
+            ('doc_file', self.gf('django.db.models.fields.files.FileField')(max_length=255)),
+            ('upload_date', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
+            ('upload_name', self.gf('django.db.models.fields.CharField')(max_length=220)),
+            ('internal_name', self.gf('django.db.models.fields.CharField')(max_length=220)),
+            ('num_pages', self.gf('django.db.models.fields.IntegerField')(null=True, blank=True)),
+            ('finished_count', self.gf('django.db.models.fields.IntegerField')(default=0)),
+            ('file_format', self.gf('django.db.models.fields.CharField')(max_length=3)),
+            ('color_depth', self.gf('django.db.models.fields.CharField')(max_length=1)),
+        ))
+        db.send_create_signal('djocr_logic', ['Document'])
 
+        # Adding model 'DocumentPage'
+        db.create_table('djocr_logic_documentpage', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('document', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['djocr_logic.Document'])),
+            ('files_prefix', self.gf('django.db.models.fields.CharField')(max_length=255, blank=True)),
+            ('stage_output_extension', self.gf('django.db.models.fields.CharField')(max_length=32, blank=True)),
+            ('page_number', self.gf('django.db.models.fields.IntegerField')()),
+            ('start_process_date', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
+            ('finish_process_date', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
+            ('is_convert_done', self.gf('django.db.models.fields.BooleanField')(default=False)),
+            ('convert_time', self.gf('django.db.models.fields.FloatField')(default=0.0)),
+            ('is_binarize_done', self.gf('django.db.models.fields.BooleanField')(default=False)),
+            ('binarize_time', self.gf('django.db.models.fields.FloatField')(default=0.0)),
+            ('is_recognize_done', self.gf('django.db.models.fields.BooleanField')(default=False)),
+            ('recognize_time', self.gf('django.db.models.fields.FloatField')(default=0.0)),
+            ('status', self.gf('django.db.models.fields.CharField')(default='w', max_length=1)),
+            ('error_text', self.gf('django.db.models.fields.CharField')(max_length=255, blank=True)),
+            ('text', self.gf('django.db.models.fields.TextField')(blank=True)),
+        ))
+        db.send_create_signal('djocr_logic', ['DocumentPage'])
 
     def backwards(self, orm):
-        
-        # Changing field 'DocumentPage.stage_output_extension'
-        db.alter_column('interface_documentpage', 'stage_output_extension', self.gf('django.db.models.fields.CharField')(max_length=3))
+        # Deleting model 'Document'
+        db.delete_table('djocr_logic_document')
 
+        # Deleting model 'DocumentPage'
+        db.delete_table('djocr_logic_documentpage')
 
     models = {
         'auth.group': {
@@ -55,11 +88,12 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        'interface.document': {
+        'djocr_logic.document': {
             'Meta': {'object_name': 'Document'},
             'color_depth': ('django.db.models.fields.CharField', [], {'max_length': '1'}),
             'doc_file': ('django.db.models.fields.files.FileField', [], {'max_length': '255'}),
             'file_format': ('django.db.models.fields.CharField', [], {'max_length': '3'}),
+            'finished_count': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'internal_name': ('django.db.models.fields.CharField', [], {'max_length': '220'}),
             'num_pages': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
@@ -67,11 +101,11 @@ class Migration(SchemaMigration):
             'upload_date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'upload_name': ('django.db.models.fields.CharField', [], {'max_length': '220'})
         },
-        'interface.documentpage': {
+        'djocr_logic.documentpage': {
             'Meta': {'object_name': 'DocumentPage'},
             'binarize_time': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
             'convert_time': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
-            'document': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['interface.Document']"}),
+            'document': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['djocr_logic.Document']"}),
             'error_text': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'}),
             'files_prefix': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'}),
             'finish_process_date': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
@@ -88,4 +122,4 @@ class Migration(SchemaMigration):
         }
     }
 
-    complete_apps = ['interface']
+    complete_apps = ['djocr_logic']

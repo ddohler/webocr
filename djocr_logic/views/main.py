@@ -6,10 +6,10 @@ from django.http import HttpResponseRedirect
 
 import uuid
 
-from interface.forms import DocumentForm
-from interface.models import Document
+from djocr_logic.forms import DocumentForm
+from djocr_logic.models import Document, DocumentOCRJob
 
-from async.tasks import determine_format
+from djocr_logic.tasks import document_analysis
 
 @login_required
 def main(request):
@@ -32,9 +32,12 @@ def main(request):
 
             d.save()
             
-            determine_format.delay(d.pk)
+            j = DocumentOCRJob(document=d)
+            j.save()
 
-            return HttpResponseRedirect('/')
+            document_analysis.delay(d.pk)
+
+            return HttpResponseRedirect('/documents')
     else:
         form = DocumentForm()
 

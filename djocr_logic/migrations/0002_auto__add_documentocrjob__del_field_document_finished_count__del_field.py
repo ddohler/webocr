@@ -1,22 +1,41 @@
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 import datetime
 from south.db import db
 from south.v2 import SchemaMigration
 from django.db import models
 
+
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        
-        # Changing field 'Document.num_pages'
-        db.alter_column('interface_document', 'num_pages', self.gf('django.db.models.fields.IntegerField')(null=True))
+        # Adding model 'DocumentOCRJob'
+        db.create_table('djocr_logic_documentocrjob', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('document', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['djocr_logic.Document'])),
+            ('processed_pages', self.gf('django.db.models.fields.IntegerField')(default=0)),
+            ('time_so_far', self.gf('django.db.models.fields.FloatField')(default=0)),
+        ))
+        db.send_create_signal('djocr_logic', ['DocumentOCRJob'])
 
+        # Deleting field 'Document.finished_count'
+        db.delete_column('djocr_logic_document', 'finished_count')
+
+        # Deleting field 'DocumentPage.error_text'
+        db.delete_column('djocr_logic_documentpage', 'error_text')
 
     def backwards(self, orm):
-        
-        # Changing field 'Document.num_pages'
-        db.alter_column('interface_document', 'num_pages', self.gf('django.db.models.fields.IntegerField')(default=0))
+        # Deleting model 'DocumentOCRJob'
+        db.delete_table('djocr_logic_documentocrjob')
 
+        # Adding field 'Document.finished_count'
+        db.add_column('djocr_logic_document', 'finished_count',
+                      self.gf('django.db.models.fields.IntegerField')(default=0),
+                      keep_default=False)
+
+        # Adding field 'DocumentPage.error_text'
+        db.add_column('djocr_logic_documentpage', 'error_text',
+                      self.gf('django.db.models.fields.CharField')(default='', max_length=255, blank=True),
+                      keep_default=False)
 
     models = {
         'auth.group': {
@@ -55,31 +74,43 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        'interface.document': {
+        'djocr_logic.document': {
             'Meta': {'object_name': 'Document'},
             'color_depth': ('django.db.models.fields.CharField', [], {'max_length': '1'}),
             'doc_file': ('django.db.models.fields.files.FileField', [], {'max_length': '255'}),
             'file_format': ('django.db.models.fields.CharField', [], {'max_length': '3'}),
-            'finish_ocr_date': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'internal_name': ('django.db.models.fields.CharField', [], {'max_length': '220'}),
             'num_pages': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"}),
-            'start_ocr_date': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
             'upload_date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'upload_name': ('django.db.models.fields.CharField', [], {'max_length': '220'})
         },
-        'interface.ocrjob': {
-            'Meta': {'object_name': 'OCRJob'},
-            'bw_cost': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
-            'conv_cost': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
-            'document': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['interface.Document']"}),
-            'error_text': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'}),
+        'djocr_logic.documentocrjob': {
+            'Meta': {'object_name': 'DocumentOCRJob'},
+            'document': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['djocr_logic.Document']"}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'ocr_cost': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
-            'status': ('django.db.models.fields.CharField', [], {'max_length': '1'}),
+            'processed_pages': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
+            'time_so_far': ('django.db.models.fields.FloatField', [], {'default': '0'})
+        },
+        'djocr_logic.documentpage': {
+            'Meta': {'object_name': 'DocumentPage'},
+            'binarize_time': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'convert_time': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'document': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['djocr_logic.Document']"}),
+            'files_prefix': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'}),
+            'finish_process_date': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'is_binarize_done': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'is_convert_done': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'is_recognize_done': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'page_number': ('django.db.models.fields.IntegerField', [], {}),
+            'recognize_time': ('django.db.models.fields.FloatField', [], {'default': '0.0'}),
+            'stage_output_extension': ('django.db.models.fields.CharField', [], {'max_length': '32', 'blank': 'True'}),
+            'start_process_date': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'status': ('django.db.models.fields.CharField', [], {'default': "'w'", 'max_length': '1'}),
             'text': ('django.db.models.fields.TextField', [], {'blank': 'True'})
         }
     }
 
-    complete_apps = ['interface']
+    complete_apps = ['djocr_logic']

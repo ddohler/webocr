@@ -4,15 +4,16 @@ from django.template import RequestContext
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, HttpResponseRedirect
 
-from interface.models import Document,DocumentPage
-from interface.util import fmt_to_mime
+from djocr_logic.models import Document,DocumentPage,DocumentOCRJob
+from djocr_logic.util import fmt_to_mime
+from djocr_logic.tasks import clean_doc_files
 
 @login_required
 def main(request):
-    all_docs = Document.objects.filter(owner=request.user)
+    all_jobs = DocumentOCRJob.objects.filter(document__owner=request.user)
 
     return render_to_response('documents.html', RequestContext(request, {
-        'docs': all_docs,
+        'jobs': all_jobs,
     }))
     #TODO: I'm really not sure that using the internal id is the best
     # way to do this.
@@ -50,8 +51,10 @@ def delete(request,internal_id):
     user_docs = Document.objects.filter(owner=request.user)
     doc = get_object_or_404(user_docs, internal_name=internal_id)
 
-    #Todo: Figure out how to delete the folders too.
     doc.doc_file.delete()
+    folder = doc.internal_name
     doc.delete()
+
+    clean_doc_files.delay(folder)
 
     return HttpResponseRedirect('/documents/')

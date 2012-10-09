@@ -1,7 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-#TODO: Bring back OCRJob class and use it to handle errors and overall
-# progress
 #TODO: Change DocumentPage to DocumentImage
 # Generate a filesystem path for document files to be uploaded to.
 def doc_upload_path(instance=None,filename=None):
@@ -22,7 +20,6 @@ class Document(models.Model):
     internal_name = models.CharField(max_length=220)
     
     num_pages = models.IntegerField(null=True,blank=True)
-    finished_count = models.IntegerField(default=0)
 
     file_format = models.CharField(max_length=3, choices=(
         ('pdf', 'Adobe PDF'),
@@ -64,7 +61,9 @@ class DocumentPage(models.Model):
     #Dates and times when processing was started, finished.
     start_process_date = models.DateTimeField(null=True,blank=True)
     finish_process_date = models.DateTimeField(null=True,blank=True)
-
+# TODO: Move time reporting into general pipeline class
+# TODO: Move status reporting into general pipeline class
+# TODO: Can I programmatically access celery's time measurement?
     is_convert_done = models.BooleanField(default=False)
     convert_time = models.FloatField(default=0.0)
 
@@ -73,7 +72,7 @@ class DocumentPage(models.Model):
 
     is_recognize_done = models.BooleanField(default=False)
     recognize_time = models.FloatField(default=0.0)
-
+# TODO: Handle status in pipeline class
     status = models.CharField(max_length=1, choices=(
         ('w', 'Waiting for processing'),
         ('c', 'Conversion in progress'),
@@ -83,6 +82,26 @@ class DocumentPage(models.Model):
         ('e', 'Error')),
         default='w')
 
-    error_text = models.CharField(max_length=255,blank=True)
     text = models.TextField(blank=True,verbose_name='OCR output')
 
+# Class to store job information collected from pages
+# This class should usually be updated synchronously, it converts
+# asynchronously generated page information into synchronous
+# information about the status of the job as a whole.
+class DocumentOCRJob(models.Model):
+    document = models.ForeignKey(Document)
+    is_finished = models.BooleanField(default=False)
+    had_error = models.BooleanField(default=False)
+    processed_pages = models.IntegerField(default=0)
+
+    time_so_far = models.FloatField(default=0)
+
+#TODO: This is going to change a lot once I add generalized
+# pipeline stages; then it will calculate time based on stages
+# rather than pages, which will be more granular and provide
+# quicker updates
+    def estimate_time():
+        if processed_pages != 0:
+            return (self.time_so_far / self.processed_pages)*(self.document.num_pages - self.processed_pages)
+        else:
+            return -1
